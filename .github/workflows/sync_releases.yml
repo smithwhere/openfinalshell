@@ -1,0 +1,118 @@
+name: Pure API Sync Releases
+
+on:
+  schedule:
+    - cron: '0 0,12 * * *' # 每 12 小时自动检查
+  workflow_dispatch:      # 支持随时手动点击运行
+
+jobs:
+  api-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync via GitHub API
+        id: sync
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.SYNC_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            // 原仓库与你自己的仓库配置
+            const upstreamOwner = "kexue-aihao";
+            const upstreamRepo = "openfinalshell";
+            const myOwner = context.repo.owner;
+            const myRepo = context.repo.repo;
+
+            console.log("正在通过 GitHub API 获取原仓库的最新 Releases...");
+            const upstreamReleases = await github.rest.repos.listReleases({
+              owner: upstreamOwner,
+              repo: upstreamRepo,
+              per_page: 1
+            });
+
+            console.log("正在获取你自己的仓库已有的 Releases...");
+            const myReleases = await github.rest.repos.listReleases({
+              owner: myOwner,
+              repo: myRepo,
+              per_page: 50
+            });
+            const myTagNames = myReleases.data.map(r => r.tag_name);
+            const syncedTags = [];
+
+            // 倒序遍历，确保老版本先同步
+            for (const release of upstreamReleases.data.reverse()) {
+              if (myTagNames.includes(release.tag_name)) {
+                console.log(`[跳过] 版本 ${release.tag_name} 在你的仓库中已存在。`);
+                continue;
+              }
+
+              console.log(`[开始搬运] 发现新版本 ${release.tag_name}，正在为你创建对应的 Release 页面...`);
+
+              // 核心修复：直接通过 API 在你的仓库创建 Release。
+              // 关键：GitHub API 允许在创建 Release 的同时自动在底层建立对应的 Tag，不需要通过 git push 触发！
+              const newRelease = await github.rest.repos.createRelease({
+                owner: myOwner,
+                repo: myRepo,
+                tag_name: release.tag_name,
+                name: release.name || release.tag_name,
+                body: release.body || "自动同步自上游仓库更新日志。",
+                draft: false,
+                prerelease: release.prerelease
+              });
+
+              console.log(`Release 页面创建成功！开始下载并中转该版本的附件资产...`);
+
+              for (const asset of release.assets) {
+                console.log(`  -> 正在处理文件: ${asset.name}`);
+                
+                // 1. 从原仓库下载附件
+                const assetData = await github.rest.repos.getReleaseAsset({
+                  owner: upstreamOwner,
+                  repo: upstreamRepo,
+                  asset_id: asset.id,
+                  headers: { accept: 'application/octet-stream' }
+                });
+
+                const filePath = path.join(process.cwd(), asset.name);
+                fs.writeFileSync(filePath, Buffer.from(assetData.data));
+
+                // 2. 将附件上传到你的新 Release 中
+                const fileBuffer = fs.readFileSync(filePath);
+                await github.rest.repos.uploadReleaseAsset({
+                  owner: myOwner,
+                  repo: myRepo,
+                  release_id: newRelease.data.id,
+                  name: asset.name,
+                  data: fileBuffer,
+                  headers: {
+                    'content-type': asset.content_type,
+                    'content-length': fileBuffer.length
+                  }
+                });
+
+                console.log(`  -> 附件 ${asset.name} 上传圆满完成！`);
+                fs.unlinkSync(filePath); // 清理临时空间
+              }
+              console.log(`[大成功] 版本 ${release.tag_name} 及其所有附件全部搬运完毕！`);
+              syncedTags.push(release.tag_name);
+            }
+
+            core.setOutput('synced', String(syncedTags.length > 0));
+            core.setOutput('summary', syncedTags.join(', '));
+
+      - name: Send sync notification email
+        if: steps.sync.outputs.synced == 'true'
+        uses: dawidd6/action-send-mail@v9
+        with:
+          server_address: smtp.qq.com
+          server_port: 465
+          secure: true
+          username: 317718961@qq.com
+          password: ${{ secrets.QQ_SMTP_AUTH_CODE }}
+          subject: ${{ github.event.repository.name }} Releases 同步完成
+          to: any@phone.eu.org
+          from: 317718961@qq.com
+          body: |
+            ${{ github.event.repository.name }} Releases 同步已完成。
+            本次同步版本：${{ steps.sync.outputs.summary }}
