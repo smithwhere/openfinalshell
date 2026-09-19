@@ -139,6 +139,21 @@ describe('发布侧', () => {
     expect(wf).toContain('dist/latest-*.yml')
     expect(wf).toContain('dist/*.exe.blockmap')
   })
+
+  it('v0.30.29 Release 只接受 Windows x64 资产并跳过其他平台', () => {
+    expect(wf).toContain("github.ref == 'refs/tags/v0.30.29'")
+    expect(wf).toContain('OpenFinalShell-0.30.29-setup-x64.exe')
+    expect(wf).toContain('OpenFinalShell-0.30.29-portable-x64.exe')
+    expect(wf).toContain('needs.verify.result == \'success\'')
+    expect(wf).toContain('latest-x64.yml')
+    expect(wf).toContain("if: github.ref != 'refs/tags/v0.30.29'")
+  })
+
+  it('updater publication and manual links target the fork', () => {
+    expect(eb).toContain('owner: smithwhere')
+    expect(read('src/main/services/manualUpdateCheck.ts')).toContain('repos/smithwhere/openfinalshell/releases/latest')
+    expect(read('src/renderer/src/features/settings/UpdatePanel.tsx')).toContain('github.com/smithwhere/openfinalshell/releases')
+  })
 })
 
 describe('文案', () => {

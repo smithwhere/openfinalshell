@@ -1,7 +1,7 @@
 import { net } from 'electron'
 import { isNewerRelease } from './updateGate'
 
-const LATEST_RELEASE_API = 'https://api.github.com/repos/kexue-aihao/openfinalshell/releases/latest'
+const LATEST_RELEASE_API = 'https://api.github.com/repos/smithwhere/openfinalshell/releases/latest'
 const MAX_RESPONSE_BYTES = 256 * 1024
 
 export interface ManualUpdateResult {

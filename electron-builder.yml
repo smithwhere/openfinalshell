@@ -145,7 +145,7 @@ flatpak:
 
 publish:
   provider: github
-  owner: kexue-aihao
+  owner: smithwhere
   repo: openfinalshell
   # 按架构分 channel。**这一行是自动更新能同时服务两个架构的全部前提。**
   #

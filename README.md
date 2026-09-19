@@ -32,7 +32,7 @@ macOS/Linux 的 RDP 基础连接、画面、键鼠和缩放已有实现。本轮
 
 本轮逐项实现和验证状态见 [多端增量移植记录](docs/platform-port-status.md)。
 
-[下载最新版本](https://github.com/kexue-aihao/openfinalshell/releases/latest) · [多实例说明](docs/multi-instance.md) · [AI 模型与图片检测](docs/ai-model-capabilities.md) · [RDP 文件传输诊断](docs/rdp-clipboard-debugging.md)
+[下载最新版本](https://github.com/smithwhere/openfinalshell/releases/latest) · [多实例说明](docs/multi-instance.md) · [AI 模型与图片检测](docs/ai-model-capabilities.md) · [RDP 文件传输诊断](docs/rdp-clipboard-debugging.md)
 
 ---
 
@@ -226,7 +226,7 @@ macOS 常用快捷键采用 Cmd / Option 语义，以“设置 → 快捷键”�
 
 ## 安装
 
-到 [最新正式版](https://github.com/kexue-aihao/openfinalshell/releases/latest) 下载安装包。当前发布矩阵为 Windows x86/x64/ARM64、Linux x64/ARM64、macOS Intel x64 / Apple Silicon ARM64，以及 Android 各 ABI APK 和 AAB：
+到 [最新正式版](https://github.com/smithwhere/openfinalshell/releases/latest) 下载安装包。`v0.30.29` Windows 修复版提供 x64 安装版和便携版；其他平台版本请查看对应 Release 的资产：
 
 当前不提供 Linux i386 / ARMv7 或 macOS Universal 包；Flatpak 仅提供 x64。Linux i386 缺少 Electron 43 官方运行时。
 

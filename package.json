@@ -7,7 +7,7 @@
   "main": "./out/main/index.js",
   "author": "openfinalshell contributors",
   "license": "MIT",
-  "homepage": "https://github.com/kexue-aihao/openfinalshell",
+  "homepage": "https://github.com/smithwhere/openfinalshell",
   "scripts": {
     "dev": "node -e \"const { existsSync }=require('fs'),{ resolve }=require('path'),{ spawn }=require('child_process');const platform=process.platform==='win32'?'win':process.platform==='darwin'?'mac':'linux';const arch=process.arch==='arm64'?'arm64':process.arch==='ia32'?'ia32':'x64';const exe=platform==='win'?'ofs-rdp-worker.exe':'ofs-rdp-worker';const worker=resolve('build/rdp-worker',exe);const env={...process.env};if(existsSync(worker)){env.OFS_RDP_WORKER=worker;console.log('[RDP] development worker: '+worker)}else{console.warn('[RDP] development worker not found for '+platform+'/'+arch+'; embedded RDP will report WORKER_MISSING. Build a local worker when the FreeRDP toolchain is available: npm run build:rdp-worker -- --platform '+platform+' --arch '+arch+'. Release builds must use --require-freerdp.')}const child=spawn(process.execPath,[resolve('node_modules/electron-vite/bin/electron-vite.js'),'dev','--watch'],{stdio:'inherit',env});child.on('exit',(code,signal)=>process.exit(code??(signal?1:0)));\"",
     "build": "electron-vite build",
@@ -26,7 +26,7 @@
     "package:dir": "npm run build:rdp-worker -- --platform win --arch x64 --require-freerdp && npm run check:rdp-worker -- --platform win --arch x64 --require-freerdp && electron-vite build && electron-builder --win --x64 --dir --publish never && npm run check:rdp-worker -- --platform win --arch x64 --app-dir release/win-unpacked --require-freerdp",
     "smoke:packaged": "node test/fixtures/packagedSmoke.mjs",
     "smoke:multi-instance": "node test/fixtures/multiInstanceSmoke.mjs",
-    "postinstall": "electron-builder install-app-deps",
+    "postinstall": "node scripts/patchZmodem.mjs && electron-builder install-app-deps",
     "check:bundle": "node scripts/checkBundleBudget.mjs",
     "build:rdp-worker": "node scripts/buildRdpWorker.mjs",
     "check:rdp-worker": "node scripts/checkRdpWorkerPackage.mjs",
@@ -41,7 +41,8 @@
     "electron-log": "^5.4.4",
     "electron-updater": "^6.8.9",
     "iconv-lite": "^0.7.3",
-    "ssh2": "^1.17.0"
+    "ssh2": "^1.17.0",
+    "zmodem.js": "0.1.10"
   },
   "devDependencies": {
     "@codemirror/commands": "^6.10.4",

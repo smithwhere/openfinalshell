@@ -124,7 +124,7 @@ jobs:
       fail-fast: false
       matrix:
         # ia32 即 32 位（x86）；Electron 43 同时提供 win32 x64 / ia32 / arm64 产物。
-        arch: [x64, ia32, arm64]
+        arch: ${{ github.ref == 'refs/tags/v0.30.29' && fromJSON('["x64"]') || fromJSON('["x64","ia32","arm64"]') }}
     steps:
       - uses: actions/checkout@v5
 
@@ -298,6 +298,7 @@ jobs:
 
   build-mac:
     name: 打包 macOS ${{ matrix.arch }}
+    if: github.ref != 'refs/tags/v0.30.29'
     needs: verify
     runs-on: ${{ matrix.runner }}
     env:
@@ -412,6 +413,7 @@ jobs:
 
   build-linux:
     name: 打包 Linux ${{ matrix.arch }}
+    if: github.ref != 'refs/tags/v0.30.29'
     needs: verify
     runs-on: ${{ matrix.runner }}
     container: debian:13
@@ -502,6 +504,7 @@ jobs:
     # Flathub 的 Electron BaseApp 目前只发布 x86_64；Linux ARM64 仍由
     # deb、rpm 与 AppImage 正式覆盖，不能产出一个无法安装的 ARM64 Flatpak。
     name: 打包 Flatpak x64
+    if: github.ref != 'refs/tags/v0.30.29'
     needs: verify
     runs-on: ubuntu-latest
     steps:
@@ -546,8 +549,10 @@ jobs:
 
   release:
     name: 发布 Release
-    needs: [build, build-mac, build-linux, build-flatpak]
-    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [verify, build, build-mac, build-linux, build-flatpak]
+    if: >-
+      always() && startsWith(github.ref, 'refs/tags/v') && needs.verify.result == 'success' && needs.build.result == 'success' &&
+      (github.ref == 'refs/tags/v0.30.29' || (needs.build-mac.result == 'success' && needs.build-linux.result == 'success' && needs.build-flatpak.result == 'success'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -564,6 +569,15 @@ jobs:
           cd dist
           ls -l
           count() { find . -maxdepth 1 -type f -name "$1" | wc -l; }
+          if [ "$GITHUB_REF_NAME" = "v0.30.29" ]; then
+            [ "$(count '*.exe')" -eq 2 ] || { echo "::error::期望 2 个 Windows x64 exe"; exit 1; }
+            [ "$(count '*.exe.blockmap')" -eq 1 ] || { echo "::error::期望 1 个 Windows x64 installer blockmap"; exit 1; }
+            test -f OpenFinalShell-0.30.29-setup-x64.exe || { echo "::error::缺少 x64 安装版"; exit 1; }
+            test -f OpenFinalShell-0.30.29-portable-x64.exe || { echo "::error::缺少 x64 便携版"; exit 1; }
+            test -f latest-x64.yml || { echo "::error::缺少 x64 更新 feed"; exit 1; }
+            [ "$(find . -maxdepth 1 -name 'latest-*.yml' ! -name '*-mac.yml' | wc -l)" -eq 1 ] || { echo "::error::只应有 x64 Windows 更新 feed"; exit 1; }
+            grep -q 'setup-x64.exe' latest-x64.yml || { echo "::error::latest-x64.yml 没指向 x64 安装包"; exit 1; }
+          else
           [ "$(count '*.exe')" -eq 6 ] || { echo "::error::期望 6 个 exe"; exit 1; }
           [ "$(count '*.exe.blockmap')" -eq 3 ] || { echo "::error::期望 3 个 blockmap"; exit 1; }
           [ "$(count '*.deb')" -eq 2 ] || { echo "::error::期望 2 个 Debian 包"; exit 1; }
@@ -584,12 +598,17 @@ jobs:
           grep -q 'setup-ia32.exe' latest-ia32.yml || { echo "::error::latest-ia32.yml 没指向 ia32 包"; exit 1; }
           grep -q 'setup-arm64.exe' latest-arm64.yml || { echo "::error::latest-arm64.yml 没指向 arm64 包"; exit 1; }
           grep -H 'url:' latest-*.yml
+          fi
 
       # 安装包没有代码签名，校验和是用户确认完整性的唯一手段
       - name: 生成校验和
         run: |
           cd dist
-          sha256sum *.exe *.deb *.rpm *.AppImage *.flatpak *.dmg *.zip | tee SHA256SUMS.txt
+          if [ "$GITHUB_REF_NAME" = "v0.30.29" ]; then
+            sha256sum *.exe *.exe.blockmap latest-x64.yml | tee SHA256SUMS.txt
+          else
+            sha256sum *.exe *.deb *.rpm *.AppImage *.flatpak *.dmg *.zip | tee SHA256SUMS.txt
+          fi
           ls -lh
 
       - name: 创建 Release 并上传
@@ -640,6 +659,21 @@ jobs:
           > 迁移走「导出并勾选含密码」→ 新机「选择文件导入…」填同一口令：
           > 那一段是用导出口令重新加密的，不依赖 DPAPI。
           EOF
+          if [ "$GITHUB_REF_NAME" = "v0.30.29" ]; then
+            cat > notes.md <<'EOF'
+          ### Windows x64 hotfix
+
+          - 修复 SSH 终端的 ZMODEM 文件传输：`sz` 可弹出保存窗口，`rz` 可弹出文件选择窗口。
+          - `rz` 命令及服务器回显保持可见；“rz waiting to receive.” 后的 shell 提示符换到新行。
+          - 本次仅提供 Windows x64 安装版和便携版。`latest-x64.yml` 与 `.blockmap` 用于应用内更新。
+
+          | 文件 | 说明 |
+          |---|---|
+          | `OpenFinalShell-0.30.29-setup-x64.exe` | Windows x64 安装版 |
+          | `OpenFinalShell-0.30.29-portable-x64.exe` | Windows x64 便携版 |
+          | `SHA256SUMS.txt` | 下载文件校验和 |
+          EOF
+          fi
           version_notes="docs/releases/$GITHUB_REF_NAME.md"
           if [ -f "$version_notes" ]; then
             cat "$version_notes" notes.md > combined-notes.md
@@ -673,7 +707,12 @@ jobs:
               esac
             done
 
-          gh release upload "$GITHUB_REF_NAME" \
-            dist/*.exe dist/*.exe.blockmap dist/*.deb dist/*.rpm dist/*.AppImage dist/*.flatpak dist/*.dmg dist/*.zip dist/latest-*.yml dist/SHA256SUMS.txt \
-            --repo "$GITHUB_REPOSITORY" \
-            --clobber
+          if [ "$GITHUB_REF_NAME" = "v0.30.29" ]; then
+            gh release upload "$GITHUB_REF_NAME" \
+              dist/*.exe dist/*.exe.blockmap dist/latest-x64.yml dist/SHA256SUMS.txt \
+              --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release upload "$GITHUB_REF_NAME" \
+              dist/*.exe dist/*.exe.blockmap dist/*.deb dist/*.rpm dist/*.AppImage dist/*.flatpak dist/*.dmg dist/*.zip dist/latest-*.yml dist/SHA256SUMS.txt \
+              --repo "$GITHUB_REPOSITORY" --clobber
+          fi

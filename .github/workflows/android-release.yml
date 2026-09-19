@@ -33,6 +33,7 @@ env:
 jobs:
   release:
     name: Build and publish Android APK/AAB
+    if: github.ref != 'refs/tags/v0.30.29' && inputs.release_tag != 'v0.30.29'
     runs-on: ubuntu-latest
     permissions:
       contents: write

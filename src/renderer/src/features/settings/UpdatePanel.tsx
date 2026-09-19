@@ -4,7 +4,7 @@ import { RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useUpdateStore } from '@/stores/useUpdateStore'
 
-const RELEASES_URL = 'https://github.com/kexue-aihao/openfinalshell/releases'
+const RELEASES_URL = 'https://github.com/smithwhere/openfinalshell/releases'
 
 /**
  * 设置 → 关于里的更新那一段。

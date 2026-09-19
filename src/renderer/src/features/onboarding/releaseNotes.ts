@@ -19,6 +19,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: '0.30.29',
     items: [
+      { type: 'fix', zh: '修复 Windows SSH 终端的 ZMODEM 双向文件传输：sz 弹出保存窗口，rz 弹出文件选择窗口；rz 命令与服务器回显保持可见，等待提示后的 shell 提示符换到新行', en: 'Fix bidirectional ZMODEM transfers in the Windows SSH terminal: sz opens a save dialog and rz opens a file picker; the rz command and server echo remain visible, and the shell prompt moves to a new line after the waiting message' },
       { type: 'fix', zh: '修复 Android 本地终端：特权档（ADB shell / root）一开终端就失败——socket 连接跑在主线程上被系统拒绝，表现为会话显示已连接却没有可用的 shell；「添加本地终端」的表单渲染在屏幕可视区之外，点了像没反应，现在会自动滚到它（「添加连接」同理）；终端顶部的会话标识也不再对本地会话显示 shell@localhost 这个用户从未输入过的地址', en: 'Fix the Android local terminal: the privileged tiers (ADB shell / root) failed to open a shell because the socket connect ran on the main thread and was rejected — the session showed as connected with no usable shell; the "add local session" form rendered below the visible area so tapping it looked like nothing happened, and it now scrolls into view (same for "add connection"); the session label above the terminal no longer shows shell@localhost for a local session, an address the user never entered' }
     ]
   },
